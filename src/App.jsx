@@ -10,15 +10,20 @@ import TransactionList from './components/TransactionList';
 import InsightsRow from './components/InsightsRow';
 import BudgetTracker from './components/BudgetTracker';
 import SavingsGoals from './components/SavingsGoals';
+import BusinessSection from './components/BusinessSection';
 import { getMonthLabel } from './utils/format';
+
+const NOW = new Date();
+const CURRENT_MONTH = `${NOW.getFullYear()}-${String(NOW.getMonth() + 1).padStart(2, '0')}`;
 
 export default function App() {
   const { transactions, addTransaction, deleteTransaction, getAvailableMonths } = useTransactions();
   const { isDark, toggle } = useTheme();
   const { code, select } = useCurrency();
 
+  const [mode, setMode] = useState('personal'); // 'personal' | 'negocio'
   const months = getAvailableMonths();
-  const [selectedMonth, setSelectedMonth] = useState(months[0] ?? '2025-03');
+  const [selectedMonth, setSelectedMonth] = useState(months[0] ?? CURRENT_MONTH);
   const [showForm, setShowForm] = useState(false);
 
   const filtered = transactions.filter((t) => t.date.startsWith(selectedMonth));
@@ -37,8 +42,20 @@ export default function App() {
             </div>
             <div className="header__brand-text">
               <span className="header__title">flujo</span>
-              <span className="header__subtitle">finanzas personales</span>
+              <span className="header__subtitle">{mode === 'negocio' ? 'mi negocio' : 'finanzas personales'}</span>
             </div>
+          </div>
+
+          {/* Mode switcher */}
+          <div className="mode-switch">
+            <button
+              className={`mode-btn ${mode === 'personal' ? 'mode-btn--active' : ''}`}
+              onClick={() => setMode('personal')}
+            >Personal</button>
+            <button
+              className={`mode-btn ${mode === 'negocio' ? 'mode-btn--active' : ''}`}
+              onClick={() => setMode('negocio')}
+            >Negocio</button>
           </div>
 
           <div className="header__controls">
@@ -59,13 +76,18 @@ export default function App() {
               <span className="currency-picker__arrow">▾</span>
             </div>
 
-            <select
-              className="month-select"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-            >
-              {months.map((m) => <option key={m} value={m}>{getMonthLabel(m)}</option>)}
-            </select>
+            {mode === 'personal' && (
+              <select
+                className="month-select"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                {months.length === 0
+                  ? <option value={CURRENT_MONTH}>{getMonthLabel(CURRENT_MONTH)}</option>
+                  : months.map((m) => <option key={m} value={m}>{getMonthLabel(m)}</option>)
+                }
+              </select>
+            )}
 
             <button
               className="btn-icon-toggle"
@@ -76,23 +98,31 @@ export default function App() {
               {isDark ? '☀' : '☾'}
             </button>
 
-            <button className="btn-primary" onClick={() => setShowForm(true)}>
-              <span className="btn-primary__plus">+</span> Nuevo movimiento
-            </button>
+            {mode === 'personal' && (
+              <button className="btn-primary" onClick={() => setShowForm(true)}>
+                <span className="btn-primary__plus">+</span> Nuevo movimiento
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="main">
-        <SummaryCards transactions={filtered} />
-        <InsightsRow transactions={filtered} selectedMonth={selectedMonth} allTransactions={transactions} />
-        <div className="charts-grid">
-          <CategoryPieChart transactions={filtered} isDark={isDark} />
-          <MonthlyBarChart transactions={transactions} isDark={isDark} />
-        </div>
-        <BudgetTracker transactions={filtered} selectedMonth={selectedMonth} />
-        <SavingsGoals />
-        <TransactionList transactions={filtered} onDelete={deleteTransaction} />
+        {mode === 'personal' ? (
+          <>
+            <SummaryCards transactions={filtered} />
+            <InsightsRow transactions={filtered} selectedMonth={selectedMonth} allTransactions={transactions} />
+            <div className="charts-grid">
+              <CategoryPieChart transactions={filtered} isDark={isDark} />
+              <MonthlyBarChart transactions={transactions} isDark={isDark} />
+            </div>
+            <BudgetTracker transactions={filtered} selectedMonth={selectedMonth} />
+            <SavingsGoals />
+            <TransactionList transactions={filtered} onDelete={deleteTransaction} />
+          </>
+        ) : (
+          <BusinessSection />
+        )}
       </main>
 
       {showForm && <TransactionForm onAdd={addTransaction} onClose={() => setShowForm(false)} />}
